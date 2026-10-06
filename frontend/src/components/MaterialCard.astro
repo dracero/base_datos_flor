@@ -1,0 +1,336 @@
+---
+interface Props {
+  material: {
+    id: number;
+    titulo: string;
+    autores?: string | null;
+    isbn?: string | null;
+    anio_edicion?: string | null;
+    tipo_material?: string | null;
+    informacion_adicional?: string | null;
+    modalidad_acceso?: string | null;
+    periodo?: string | null;
+    codigo_agrupamiento?: string | null;
+    agrupamiento?: string | null;
+    materia_codigo?: string | null;
+    materia_nombre?: string | null;
+    departamento?: string | null;
+    docente_responsable?: string | null;
+    drive_file_link?: string | null;
+  };
+}
+
+const { material } = Astro.props;
+
+// Determine badge class according to tipo_material
+const tipo = material.tipo_material || 'Material Complementario';
+let badgeClass = 'badge-tipo-otro';
+if (tipo.includes('Libro')) badgeClass = 'badge-tipo-libro';
+else if (tipo.includes('Guía')) badgeClass = 'badge-tipo-guia';
+else if (tipo.includes('Apunte')) badgeClass = 'badge-tipo-apuntes';
+else if (tipo.includes('Video')) badgeClass = 'badge-tipo-video';
+else if (tipo.includes('Aula')) badgeClass = 'badge-tipo-aula';
+else if (tipo.includes('Examen') || tipo.includes('Parcial')) badgeClass = 'badge-tipo-examen';
+
+// URL detection in modalidad_acceso or informacion_adicional
+const findUrl = (text?: string | null) => {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s\)]+/);
+  return match ? match[0] : null;
+};
+
+const accessUrl = findUrl(material.modalidad_acceso) || findUrl(material.informacion_adicional);
+---
+
+<article class="material-card glass-card" id={`material-card-${material.id}`}>
+  <div class="card-header">
+    <div class="header-tags">
+      <span class={`badge ${badgeClass}`}>{tipo}</span>
+      {material.periodo && (
+        <span class="badge badge-periodo">{material.periodo}</span>
+      )}
+      {material.departamento && (
+        <span class="badge badge-depto">{material.departamento}</span>
+      )}
+    </div>
+
+    {material.materia_codigo && (
+      <a 
+        href={`/materias/${material.materia_codigo}`} 
+        class="materia-chip"
+        title="Ver ficha completa de la materia"
+      >
+        <span class="mono">{material.materia_codigo}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </a>
+    )}
+  </div>
+
+  <div class="card-body">
+    <h3 class="material-title">{material.titulo}</h3>
+
+    {material.materia_nombre && (
+      <p class="materia-context">
+        Asignatura: <strong>{material.materia_nombre}</strong>
+        {material.codigo_agrupamiento && (
+          <span class="agrup-code mono">({material.codigo_agrupamiento})</span>
+        )}
+      </p>
+    )}
+
+    {material.autores && (
+      <div class="meta-row">
+        <span class="meta-label">Autor/es:</span>
+        <span class="meta-val">{material.autores}</span>
+      </div>
+    )}
+
+    {(material.anio_edicion || material.isbn) && (
+      <div class="meta-details-grid">
+        {material.anio_edicion && (
+          <div class="meta-item">
+            <span class="meta-label">Año / Edición:</span>
+            <span class="meta-val">{material.anio_edicion}</span>
+          </div>
+        )}
+        {material.isbn && (
+          <div class="meta-item">
+            <span class="meta-label">ISBN:</span>
+            <span class="meta-val mono">{material.isbn}</span>
+          </div>
+        )}
+      </div>
+    )}
+
+    {material.informacion_adicional && (
+      <div class="info-block">
+        <p class="info-text">{material.informacion_adicional}</p>
+      </div>
+    )}
+  </div>
+
+  <div class="card-footer">
+    <div class="docente-info">
+      {material.docente_responsable && (
+        <span class="docente-text">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          {material.docente_responsable}
+        </span>
+      )}
+    </div>
+
+    <div class="card-links">
+      {accessUrl && (
+        <a 
+          href={accessUrl} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="btn-link-action btn-campus"
+          title="Abrir enlace del recurso o Campus"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Acceso Directo
+        </a>
+      )}
+
+      {material.drive_file_link && (
+        <a 
+          href={material.drive_file_link} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="btn-link-action btn-drive"
+          title="Ver constancia de carga en Google Drive"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Drive
+        </a>
+      )}
+    </div>
+  </div>
+</article>
+
+<style>
+  .material-card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    height: 100%;
+    justify-content: space-between;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .header-tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .materia-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: #a5b4fc;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .materia-chip:hover {
+    background: rgba(99, 102, 241, 0.3);
+    color: #ffffff;
+    border-color: #6366f1;
+  }
+
+  .material-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+    line-height: 1.35;
+  }
+
+  .materia-context {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .materia-context strong {
+    color: #e2e8f0;
+  }
+
+  .agrup-code {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 4px;
+  }
+
+  .meta-row {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .meta-label {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .meta-val {
+    color: var(--text-main);
+  }
+
+  .meta-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-subtle);
+  }
+
+  .info-block {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.025);
+    border-left: 2px solid var(--accent-cyan);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .info-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .card-footer {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .docente-info {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .docente-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .card-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-link-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .btn-campus {
+    background: rgba(6, 182, 212, 0.15);
+    border: 1px solid rgba(6, 182, 212, 0.35);
+    color: #67e8f9;
+  }
+
+  .btn-campus:hover {
+    background: rgba(6, 182, 212, 0.25);
+    color: #ffffff;
+    border-color: #06b6d4;
+  }
+
+  .btn-drive {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+  }
+
+  .btn-drive:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+  }
+</style>

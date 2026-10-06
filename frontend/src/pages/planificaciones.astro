@@ -1,0 +1,442 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getPlanificaciones, getPeriodos, getDepartamentos } from '../lib/db';
+
+const searchParams = Astro.url.searchParams;
+const filtroPeriodo = searchParams.get('periodo') || 'ALL';
+const filtroDepto = searchParams.get('depto') || 'ALL';
+
+const periodos = await getPeriodos();
+const departamentos = await getDepartamentos();
+const planificaciones = await getPlanificaciones(filtroPeriodo, filtroDepto);
+
+// Compute statistics for current view
+const totalPlanis = planificaciones.length;
+const completas = planificaciones.filter((p: any) => p.completa).length;
+const porcentajeCompleto = totalPlanis > 0 ? Math.round((completas / totalPlanis) * 100) : 0;
+const totalMateriales = planificaciones.reduce((acc: number, p: any) => acc + parseInt(p.total_materiales_reales || '0'), 0);
+---
+
+<Layout 
+  title="Planificaciones Cuatrimestrales" 
+  description="Seguimiento de planificaciones docentes y cargas bibliográficas por cuatrimestre"
+>
+  <div class="container py-8">
+    <!-- Breadcrumbs -->
+    <div class="breadcrumbs">
+      <a href="/">Inicio</a>
+      <span>/</span>
+      <span class="current">Planificaciones Cuatrimestrales</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Planificaciones por Cuatrimestre</h1>
+        <p class="page-subtitle">
+          Auditoría de estados de entrega docente, formularios en Google Drive y recuento de bibliografía por agrupación de cátedra.
+        </p>
+      </div>
+    </div>
+
+    <!-- Cuatrimestre Selector & KPIs -->
+    <div class="tracker-dashboard">
+      <div class="filters-bar glass-card">
+        <form method="GET" action="/planificaciones" class="filter-controls">
+          <div class="select-wrapper">
+            <label for="periodo-select" class="form-label">Cuatrimestre:</label>
+            <select name="periodo" id="periodo-select" class="select-input" onchange="this.form.submit()">
+              <option value="ALL" selected={filtroPeriodo === 'ALL'}>Todos los períodos (Histórico)</option>
+              {periodos.map((p: any) => (
+                <option value={p.codigo} selected={filtroPeriodo === p.codigo}>
+                  {p.codigo} ({p.cant_agrupamientos} comisiones)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <label for="depto-select" class="form-label">Departamento:</label>
+            <select name="depto" id="depto-select" class="select-input" onchange="this.form.submit()">
+              <option value="ALL" selected={filtroDepto === 'ALL'}>Todos los departamentos</option>
+              {departamentos.map((d: any) => (
+                <option value={d.codigo} selected={filtroDepto === d.codigo}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(filtroPeriodo !== 'ALL' || filtroDepto !== 'ALL') && (
+            <div class="reset-wrapper">
+              <a href="/planificaciones" class="btn btn-outline btn-reset">Limpiar filtros</a>
+            </div>
+          )}
+        </form>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="tracker-kpis">
+        <div class="tracker-kpi glass-card">
+          <span class="kpi-val">{totalPlanis}</span>
+          <span class="kpi-lbl">Comisiones en este filtro</span>
+        </div>
+        <div class="tracker-kpi glass-card">
+          <span class="kpi-val text-emerald">{porcentajeCompleto}%</span>
+          <span class="kpi-lbl">Cumplimiento ({completas}/{totalPlanis})</span>
+        </div>
+        <div class="tracker-kpi glass-card">
+          <span class="kpi-val text-cyan">{totalMateriales}</span>
+          <span class="kpi-lbl">Materiales Presentados</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planificaciones Table -->
+    <div class="table-card glass-card">
+      <div class="table-responsive">
+        <table class="planis-table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Agrupamiento</th>
+              <th>Denominación Cátedra</th>
+              <th>Departamento</th>
+              <th>Docente Responsable</th>
+              <th>Estado</th>
+              <th>Materiales</th>
+              <th>Constancia Drive</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {planificaciones.map((pl: any) => (
+              <tr id={`plan-row-${pl.id}`}>
+                <td>
+                  <span class="badge badge-periodo">{pl.periodo}</span>
+                </td>
+                <td>
+                  <span class="badge badge-depto mono">{pl.codigo_agrupamiento}</span>
+                </td>
+                <td class="cell-denom">
+                  <strong>{pl.agrupamiento}</strong>
+                  {pl.codigo_planes && (
+                    <span class="cell-sub mono text-dim">Planes: {pl.codigo_planes}</span>
+                  )}
+                </td>
+                <td>
+                  <span class="text-muted">{pl.departamento || '-'}</span>
+                </td>
+                <td>
+                  <div class="docente-stack">
+                    <span class="docente-name">{pl.docente_responsable || 'Sin asignar'}</span>
+                    {pl.docente_email && (
+                      <span class="docente-mail mono text-dim">{pl.docente_email}</span>
+                    )}
+                  </div>
+                </td>
+                <td>
+                  {pl.completa ? (
+                    <span class="badge badge-status-completa">✓ Completa</span>
+                  ) : (
+                    <span class="badge badge-status-incompleta">Pendiente</span>
+                  )}
+                </td>
+                <td>
+                  <div class="materials-stat">
+                    <span class="mono font-bold text-main">{pl.total_materiales_reales}</span>
+                    {pl.cantidad_declarada > 0 && pl.cantidad_declarada !== parseInt(pl.total_materiales_reales) && (
+                      <span class="decl-pill mono" title="Cantidad declarada en formulario">
+                        decl: {pl.cantidad_declarada}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td>
+                  {pl.drive_file_link ? (
+                    <a 
+                      href={pl.drive_file_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="btn-drive-cell"
+                      title="Abrir constancia en Google Drive"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                      Drive
+                    </a>
+                  ) : (
+                    <span class="text-dim">-</span>
+                  )}
+                </td>
+                <td>
+                  <a 
+                    href={`/?periodo=${encodeURIComponent(pl.periodo)}&q=${encodeURIComponent(pl.codigo_agrupamiento)}`}
+                    class="btn-explore-cell"
+                    title="Ver recursos cargados por esta cátedra"
+                  >
+                    Ver recursos
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .py-8 {
+    padding-top: 36px;
+    padding-bottom: 50px;
+  }
+
+  .breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .breadcrumbs a:hover {
+    color: var(--primary);
+  }
+
+  .breadcrumbs .current {
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+
+  .page-header {
+    margin-bottom: 28px;
+  }
+
+  .page-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .page-subtitle {
+    font-size: 15px;
+    color: var(--text-muted);
+    max-width: 720px;
+  }
+
+  /* TRACKER DASHBOARD */
+  .tracker-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .filters-bar {
+    padding: 18px 24px;
+  }
+
+  .filter-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .select-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 260px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .reset-wrapper {
+    margin-left: auto;
+  }
+
+  .btn-reset {
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+
+  .tracker-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .tracker-kpi {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .kpi-val {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 4px;
+    color: #ffffff;
+  }
+
+  .text-emerald { color: #34d399; }
+  .text-cyan { color: #22d3ee; }
+
+  .kpi-lbl {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  /* TABLE */
+  .table-card {
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .planis-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .planis-table th {
+    padding: 14px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+
+  .planis-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    vertical-align: middle;
+  }
+
+  .planis-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .cell-denom {
+    max-width: 280px;
+  }
+
+  .cell-denom strong {
+    display: block;
+    line-height: 1.35;
+    color: #ffffff;
+  }
+
+  .cell-sub {
+    font-size: 11px;
+    display: block;
+    margin-top: 4px;
+  }
+
+  .docente-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .docente-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  .docente-mail {
+    font-size: 11px;
+  }
+
+  .materials-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .decl-pill {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    color: var(--text-dim);
+  }
+
+  .btn-drive-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #67e8f9;
+    background: rgba(6, 182, 212, 0.12);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+  }
+
+  .btn-drive-cell:hover {
+    background: rgba(6, 182, 212, 0.25);
+    color: #ffffff;
+  }
+
+  .btn-explore-cell {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .btn-explore-cell:hover {
+    background: rgba(99, 102, 241, 0.3);
+    color: #ffffff;
+    border-color: #6366f1;
+  }
+
+  @media (max-width: 768px) {
+    .tracker-kpis {
+      grid-template-columns: 1fr;
+    }
+    .filter-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .reset-wrapper {
+      margin-left: 0;
+    }
+  }
+</style>

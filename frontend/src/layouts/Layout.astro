@@ -1,0 +1,91 @@
+---
+import '../styles/global.css';
+import Navbar from '../components/Navbar.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { 
+  title, 
+  description = "Consulta interactiva de planificaciones académicas y bibliografía por materia - FIUBA" 
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} | FIUBA Planificaciones & Bibliografía</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <Navbar />
+
+    <main class="page-content">
+      <slot />
+    </main>
+
+    <footer class="footer-wrapper">
+      <div class="container footer-inner">
+        <div class="footer-info">
+          <p class="footer-title">Sistema de Planificaciones y Bibliografía de Asignaturas</p>
+          <p class="footer-desc">Facultad de Ingeniería, Universidad de Buenos Aires (FIUBA) • Base de datos relacional PostgreSQL en local.</p>
+        </div>
+        <div class="footer-meta">
+          <span class="badge badge-periodo">PostgreSQL 16</span>
+          <span class="badge badge-depto">Astro SSR</span>
+          <span class="badge badge-tipo-apuntes">7 Cuatrimestres Históricos</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .page-content {
+    min-height: calc(100vh - 72px - 90px);
+    padding-bottom: 60px;
+  }
+
+  .footer-wrapper {
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(8, 12, 20, 0.9);
+    padding: 24px 0;
+    margin-top: 40px;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .footer-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .footer-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .footer-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 768px) {
+    .footer-inner {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

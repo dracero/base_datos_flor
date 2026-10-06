@@ -1,0 +1,14 @@
+{
+  "name": "base-datos-material-estudio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de consulta de planificaciones y bibliografía FIUBA",
+  "scripts": {
+    "predev": "bash start-db.sh",
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "db:start": "bash start-db.sh",
+    "query": "bash query.sh"
+  }
+}
